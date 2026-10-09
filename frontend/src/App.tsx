@@ -1,26 +1,121 @@
+import { useState } from 'react'
 import './App.css'
 
+type MangaResponse = {
+  title: string
+  genre: string
+  image_data_url?: string
+}
+
 function App() {
+  const [story, setStory] = useState('')
+  const [genre, setGenre] = useState('shonen')
+  const [isVillainMode, setIsVillainMode] = useState(false)
+  const [manga, setManga] = useState<MangaResponse | null>(null)
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadingStage, setLoadingStage] = useState('')
+
+  async function handleGenerate() {
+    setError('')
+    setIsLoading(true)
+    setLoadingStage('Checking your story...')
+
+    const stageTimer = window.setInterval(() => {
+      setLoadingStage((currentStage) => {
+        if (currentStage === 'Checking your story...') return 'Writing six page prompts...'
+        if (currentStage === 'Writing six page prompts...') return 'Generating six manga pages...'
+        return 'Generating six manga pages...'
+      })
+    }, 4000)
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story, genre, isVillainMode }),
+      })
+      const responseText = await response.text()
+      let data: MangaResponse & { error?: string }
+
+      try {
+        data = JSON.parse(responseText) as MangaResponse & { error?: string }
+      } catch {
+        throw new Error(`The API returned an invalid response (HTTP ${response.status}).`)
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error ?? `The API request failed (HTTP ${response.status}).`)
+      }
+
+      setManga(data)
+    } catch (generationError) {
+      setError(generationError instanceof Error ? generationError.message : 'Generation failed')
+    } finally {
+      window.clearInterval(stageTimer)
+      setLoadingStage('')
+      setIsLoading(false)
+    }
+  }
+
   return (
-    <main className="min-h-screen px-6 py-12 sm:px-12">
-      <section className="mx-auto max-w-5xl">
-        <p className="mb-4 text-sm font-bold uppercase tracking-[0.3em] text-red-700">
-          Manga My Life
-        </p>
-        <h1 className="max-w-3xl text-5xl font-black tracking-tight sm:text-7xl">
-          Turn everyday moments into a dramatic manga.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg text-stone-700">
-          The React and Tailwind foundation is ready. The next step is connecting
-          the story form to the protected generation endpoint.
-        </p>
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          {['Story input', 'Genre selector', '3-panel reveal'].map((item) => (
-            <div key={item} className="border-4 border-stone-900 bg-white p-5 shadow-[6px_6px_0_#201b1b]">
-              <span className="font-bold">{item}</span>
-            </div>
-          ))}
+    <main className="app-shell">
+      <section className="app-content">
+        <header className="masthead">
+          <p>MANGA MY LIFE / AI STORY STUDIO</p>
+          <h1>One day.<br /><em>Six pages.</em></h1>
+          <span>YOUR LIFE, INKED.</span>
+        </header>
+
+        <div className="story-form">
+          <div className="form-kicker">
+            <span className="status-dot" />
+            <span>AI STORY PROMPT</span>
+            <span className="form-hint">Groq scriptwriter → Gemini manga pages</span>
+          </div>
+          <textarea
+            aria-label="Your daily activity or life story"
+            placeholder="Type your daily activity here. Example: I missed the last bus to Calgary and ran through the snow..."
+            value={story}
+            onChange={(event) => setStory(event.target.value)}
+          />
+          <div className="form-controls">
+            <select value={genre} onChange={(event) => setGenre(event.target.value)}>
+              <option value="shonen">Shonen</option>
+              <option value="comedy">Comedy</option>
+              <option value="romance">Romance</option>
+              <option value="horror">Horror</option>
+            </select>
+            <button className={isVillainMode ? 'mode active' : 'mode'} onClick={() => setIsVillainMode((value) => !value)} type="button">
+              {isVillainMode ? 'VILLAIN POV' : 'HERO POV'}
+            </button>
+            <button className="generate" disabled={!story.trim() || isLoading} onClick={handleGenerate} type="button">
+              {isLoading ? 'AI IS WORKING...' : 'SEND STORY TO AI'}
+            </button>
+          </div>
+          <p className="form-note">Your story becomes one complete manga page with six panels in a single AI-generated image.</p>
+          {isLoading && <p className="loading-stage" role="status">{loadingStage}</p>}
+          {error && <p className="error">{error}</p>}
         </div>
+
+        {manga && (
+          <section className="manga-book" aria-label={`${manga.title} manga`}>
+            <div className="book-title">
+              <span>{manga.genre} / COMPLETE STORY</span>
+              <h2>{manga.title}</h2>
+              <span>VOL. 001</span>
+            </div>
+            <div className="page-grid">
+              <article className="manga-page">
+                {manga.image_data_url ? (
+                  <img src={manga.image_data_url} alt={`${manga.title}, six-panel manga page`} />
+                ) : (
+                  <div className="missing-image">MANGA IMAGE UNAVAILABLE</div>
+                )}
+              </article>
+            </div>
+          </section>
+        )}
       </section>
     </main>
   )
