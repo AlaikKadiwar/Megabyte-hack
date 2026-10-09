@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  font-family: Georgia, "Times New Roman", serif;
-  color: #201b1b;
-  background: #f7f0e6;
+  font-family: "DM Mono", "SFMono-Regular", monospace;
+  color: #171718;
+  background: #f5f1e9;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -13,8 +13,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #eee9df;
-  color: #161414;
+  background: #f5f1e9;
+  color: #171718;
 }
 
 button, textarea, select { font: inherit; }
